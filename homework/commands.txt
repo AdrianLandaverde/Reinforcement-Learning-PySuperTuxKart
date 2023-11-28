@@ -1,0 +1,6 @@
+Activate venv:      .venv\Scripts\activate 
+Test 1 track:       python homework/controller.py track -v
+Tracks available:   zengarden lighthouse scotland hacienda snowtuxpeak cornfield_crossing
+Run all tracks:     python homework/utils.py zengarden lighthouse hacienda snowtuxpeak cornfield_crossing scotland
+Training:           python homework/train.py
+Test Training:      python homework/planner.py track -v
