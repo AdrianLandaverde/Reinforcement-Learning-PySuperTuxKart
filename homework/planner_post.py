@@ -1,8 +1,6 @@
 import torch
 import torch.nn.functional as F
 
-from planner_post import load_model_post
-
 
 def spatial_argmax(logit):
     """
@@ -15,7 +13,7 @@ def spatial_argmax(logit):
                         (weights.sum(2) * torch.linspace(-1, 1, logit.size(1)).to(logit.device)[None]).sum(1)), 1)
 
 
-class Planner(torch.nn.Module):
+class PlannerPost(torch.nn.Module):
     def __init__(self):
 
         super().__init__()
@@ -72,19 +70,19 @@ class Planner(torch.nn.Module):
         # return self.classifier(x.mean(dim=[-2, -1]))
 
 
-def save_model(model):
+def save_model_post(model):
     from torch import save
     from os import path
-    if isinstance(model, Planner):
-        return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), 'planner.th'))
+    if isinstance(model, PlannerPost):
+        return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), 'planner_post.th'))
     raise ValueError("model type '%s' not supported!" % str(type(model)))
 
 
-def load_model():
+def load_model_post():
     from torch import load
     from os import path
-    r = Planner()
-    r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner.th'), map_location='cpu'))
+    r = PlannerPost()
+    r.load_state_dict(load(path.join(path.dirname(path.abspath(__file__)), 'planner_post.th'), map_location='cpu'))
     return r
 
 
@@ -96,11 +94,10 @@ if __name__ == '__main__':
 
     def test_planner(args):
         # Load model
-        planner = load_model().eval()
-        planner_post = load_model_post().eval()
+        planner = load_model_post().eval()
         pytux = PyTux()
         for t in args.track:
-            steps, how_far = pytux.rollout(t, control, planner=planner, max_frames=1000, verbose=args.verbose, planner_post=planner_post)
+            steps, how_far = pytux.rollout(t, control, planner=planner, max_frames=1000, verbose=args.verbose)
             print(steps, how_far)
         pytux.close()
 

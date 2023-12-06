@@ -1,16 +1,16 @@
 import pystk
 
 
-def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=25):
+def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=25, aim_point_post=None):
     import numpy as np
     #this seems to initialize an object
     action = pystk.Action()
 
     #compute acceleration
     if abs(aim_point[0]) > 0.15:
-        action.acceleration = 0.3
+        action.acceleration = 0.5
     else:
-        action.acceleration = 0.9
+        action.acceleration = 1
     
     if current_vel > target_vel:
         action.brake = True
@@ -27,8 +27,18 @@ def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=2
         action.drift = True
     else:
         action.drift = False
+    
+    if aim_point_post is not None:
 
-    action.fire= True
+        # Compute skidding
+        if abs(aim_point_post[0]) > skid_thresh + 0.1:
+            action.drift = True
+            action.steer = np.clip((steer_gain*2) * aim_point_post[0], -1, 1)
+        else:
+            action.drift = False
+            if abs(aim_point[0]) > 0.15:
+                action.acceleration= 1
+        
 
     return action
 

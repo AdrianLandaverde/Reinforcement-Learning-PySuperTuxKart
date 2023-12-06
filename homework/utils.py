@@ -68,7 +68,7 @@ class PyTux:
         p = proj @ view @ np.array(list(x) + [1])
         return np.clip(np.array([p[0] / p[-1], -p[1] / p[-1]]), -1, 1)
 
-    def rollout(self, track, controller, planner=None, max_frames=1000, verbose=False, data_callback=None):
+    def rollout(self, track, controller, planner=None, max_frames=1000, verbose=False, data_callback=None, planner_post=None):
         """
         Play a level (track) for a single round.
         :param track: Name of the track
@@ -89,7 +89,7 @@ class PyTux:
                 del self.k
             config = pystk.RaceConfig(num_kart=1, laps=1,  track=track)
             config.players[0].controller = pystk.PlayerConfig.Controller.PLAYER_CONTROL
-            
+
             self.k = pystk.Race(config)
             self.k.start()
             self.k.step()
@@ -121,15 +121,21 @@ class PyTux:
 
             aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, track)
             aim_point_image = self._to_image(aim_point_world, proj, view)
+
+            aim_point_world_post = self._point_on_track(kart.distance_down_track+TRACK_OFFSET+10, track)
+            aim_point_image_post = self._to_image(aim_point_world_post, proj, view)
+
             if data_callback is not None:
-                data_callback(t, np.array(self.k.render_data[0].image), aim_point_image)
+                data_callback(t, np.array(self.k.render_data[0].image), aim_point_image, aim_point_image_post) #Aqui se debe agregar els egundo punto
 
             if planner:
                 image = np.array(self.k.render_data[0].image)
                 aim_point_image = planner(TF.to_tensor(image)[None]).squeeze(0).cpu().detach().numpy()
+                if planner_post:
+                    aim_point_image_post = planner_post(TF.to_tensor(image)[None]).squeeze(0).cpu().detach().numpy()
 
             current_vel = np.linalg.norm(kart.velocity)
-            action = controller(aim_point_image, current_vel)
+            action = controller(aim_point_image, current_vel, aim_point_post= aim_point_image_post)
 
             if current_vel < 1.0 and t - last_rescue > RESCUE_TIMEOUT:
                 last_rescue = t
@@ -140,10 +146,12 @@ class PyTux:
                 ax.imshow(self.k.render_data[0].image)
                 WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(kart.location, proj, view)), 2, ec='b', fill=False, lw=1.5))
-                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 2, ec='r', fill=False, lw=1.5))
+                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 2, ec='Red', fill=False, lw=1.5))
+                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world_post, proj, view)), 2, ec='DarkRed', fill=False, lw=1.5))
                 if planner:
                     ap = self._point_on_track(kart.distance_down_track + TRACK_OFFSET, track)
-                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image), 2, ec='g', fill=False, lw=1.5))
+                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image), 2, ec='lawnGreen', fill=False, lw=1.5))
+                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image_post), 2, ec='DarkGreen', fill=False, lw=1.5))
                 plt.pause(1e-3)
 
             self.k.step(action)
@@ -166,22 +174,25 @@ if __name__ == '__main__':
     from os import makedirs
 
 
-    def noisy_control(aim_pt, vel):
-        return control(aim_pt + np.random.randn(*aim_pt.shape) * aim_noise,
-                       vel + np.random.randn() * vel_noise)
+    def noisy_control(aim_pt, vel, aim_point_post=None):
+        random_aim_point = np.random.randn(*aim_pt.shape)* aim_noise
+        random_vel = np.random.randn() * vel_noise
+        return control(aim_pt + random_aim_point, vel + random_vel, 
+                        aim_point_post=aim_point_post+random_aim_point)
 
 
     parser = ArgumentParser("Collects a dataset for the high-level planner")
     parser.add_argument('track', nargs='+')
     parser.add_argument('-o', '--output', default=DATASET_PATH)
-    parser.add_argument('-n', '--n_images', default=20000, type=int)
-    parser.add_argument('-m', '--steps_per_track', default=40000, type=int)
+    parser.add_argument('-n', '--n_images', default=10000, type=int)
+    parser.add_argument('-m', '--steps_per_track', default=20000, type=int)
     parser.add_argument('--aim_noise', default=0.1, type=float)
     parser.add_argument('--vel_noise', default=5, type=float)
     parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
     try:
         makedirs(args.output)
+        makedirs("drive_data_2") #Agregado
     except OSError:
         pass
     pytux = PyTux()
@@ -190,7 +201,7 @@ if __name__ == '__main__':
         aim_noise, vel_noise = 0, 0
 
         print("\n\n"+track) #Agregado
-        def collect(_, im, pt):
+        def collect(_, im, pt, pt2): #Aqui se debe agregar como parámetro el segundo punto
             from PIL import Image
             from os import path
             global n
@@ -200,8 +211,15 @@ if __name__ == '__main__':
                 Image.fromarray(im).save(fn + '.png')
                 with open(fn + '.csv', 'w') as f:
                     f.write('%0.1f,%0.1f' % tuple(pt))
+
+                
+                #Aqui se debe agregar que escriba la posición del segundo círculo en el csv
+                fn = path.join("drive_data_2", track + '_%05d' % id)
+                Image.fromarray(im).save(fn + '.png')
+                with open(fn + '.csv', 'w') as f:
+                    f.write('%0.1f,%0.1f' % tuple(pt2))
             n += 1
-        pbar = tqdm.tqdm(total=args.steps_per_track)
+        pbar = tqdm.tqdm(total=images_per_track)
         while n < args.steps_per_track:
             steps, how_far = pytux.rollout(track, noisy_control, max_frames=1000, verbose=args.verbose, data_callback=collect)
             #print(steps, how_far) #Quitar
