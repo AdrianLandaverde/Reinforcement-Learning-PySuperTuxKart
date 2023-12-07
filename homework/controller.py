@@ -1,7 +1,8 @@
 import pystk
 
 
-def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=25, aim_point_post=None):
+def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=25, aim_point_post=None,
+            is_banana=False):
     import numpy as np
     #this seems to initialize an object
     action = pystk.Action()
@@ -38,12 +39,17 @@ def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=2
             action.drift = False
             if abs(aim_point[0]) > 0.15:
                 action.acceleration= 1
-        
+
+    if is_banana:
+        if abs(aim_point[0]) < 0.15:
+            action.drift=True
+            action.acceleration = 0.5
+            if aim_point[0] > 0:
+                action.steer = -1
+            else:
+                action.steer = 1
 
     return action
-
-
-
 
 if __name__ == '__main__':
     from utils import PyTux

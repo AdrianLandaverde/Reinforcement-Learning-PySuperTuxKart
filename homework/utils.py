@@ -111,7 +111,7 @@ class PyTux:
 
             kart = state.players[0].kart
 
-            if np.isclose(kart.overall_distance / track.length, 1.0, atol=2e-3):
+            if np.isclose(kart.overall_distance / track.length, 1.0, atol=3.5e-3):
                 if verbose:
                     print("Finished at t=%d" % t)
                 break
@@ -121,11 +121,6 @@ class PyTux:
 
             aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, track)
             aim_point_image = self._to_image(aim_point_world, proj, view)
-
-            bananas= []
-            for item in state.items:
-                if item.type == pystk.Item.Type.BANANA:
-                    bananas.append(item.location)
                 
             aim_point_world_post = self._point_on_track(kart.distance_down_track+TRACK_OFFSET+10, track)
             aim_point_image_post = self._to_image(aim_point_world_post, proj, view)
@@ -139,8 +134,31 @@ class PyTux:
                 if planner_post:
                     aim_point_image_post = planner_post(TF.to_tensor(image)[None]).squeeze(0).cpu().detach().numpy()
 
+            bananas= []
+            for item in state.items:
+                if item.type == pystk.Item.Type.BANANA:
+                    bananas.append(item.location)
+
+            is_banana = False
+            nearest_banana = None
+            if self.k.config.track=="cornfield_crossing":
+                tol_banana= 10
+                n_banana= 0
+                for banana in bananas:
+                    if np.isclose(banana[0], kart.location[0], atol=tol_banana)  and np.isclose(banana[2], kart.location[2], atol=tol_banana):
+                        is_banana = True
+                        nearest_banana = banana
+                        x_banana= banana[0]
+                        y_banana= banana[2]
+
+                        angle_kart_banana= np.arctan2(abs(x_banana)-abs(kart.location[0]), abs(y_banana)-abs(kart.location[2]), )
+                        print("Angle kart-banana: ", angle_kart_banana*180/np.pi, "n_banana: ", n_banana)
+                        break
+                    n_banana+=1
             current_vel = np.linalg.norm(kart.velocity)
-            action = controller(aim_point_image, current_vel, aim_point_post= aim_point_image_post)
+            action = controller(aim_point_image, current_vel, aim_point_post= aim_point_image_post, is_banana=is_banana)
+
+        
 
             if current_vel < 1.0 and t - last_rescue > RESCUE_TIMEOUT:
                 last_rescue = t
@@ -150,32 +168,10 @@ class PyTux:
                 ax.clear()
                 ax.imshow(self.k.render_data[0].image)
                 WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
+
+                if is_banana:
+                    ax.add_artist(plt.Circle(WH2*(1+self._to_image(nearest_banana, proj, view)), 10, ec='Yellow', fill=False, lw=1.5))
                 
-                is_banana = False
-                for banana in bananas:
-                    ax.add_artist(plt.Circle(WH2*(1+self._to_image(banana, proj, view)), 2, ec='Yellow', fill=False, lw=1.5))
-                    #print(banana[2])
-                    if np.isclose(banana[0], kart.location[0], atol=5) and np.isclose(banana[1], kart.location[1], atol=5) and np.isclose(banana[2], kart.location[2], atol=5):
-                        print("Banana")
-                        print(banana)
-                        print(kart.location)
-                        print(" ")
-                        is_banana = True
-                        
-                        angle_banana_x = banana[0] - kart.location[0]
-                        angle_banana_y = banana[1] - kart.location[1]
-                        angle_banana_z = banana[2] - kart.location[2]
-
-                        print("Angulos")
-                        print(angle_banana_x)
-                        print(angle_banana_y)
-                        print(angle_banana_z)
-
-                    
-                
-                
-
-
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(kart.location, proj, view)), 2, ec='b', fill=False, lw=1.5))
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 2, ec='Red', fill=False, lw=1.5))
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world_post, proj, view)), 2, ec='DeepSkyBlue', fill=False, lw=1.5))
@@ -187,6 +183,7 @@ class PyTux:
 
             self.k.step(action)
             t += 1
+
         return t, kart.overall_distance / track.length
 
     def close(self):
@@ -216,7 +213,7 @@ if __name__ == '__main__':
     parser.add_argument('track', nargs='+')
     parser.add_argument('-o', '--output', default=DATASET_PATH)
     parser.add_argument('-n', '--n_images', default=15000, type=int)
-    parser.add_argument('-m', '--steps_per_track', default=30000, type=int)
+    parser.add_argument('-m', '--steps_per_track', default=20000, type=int)
     parser.add_argument('--aim_noise', default=0.1, type=float)
     parser.add_argument('--vel_noise', default=5, type=float)
     parser.add_argument('-v', '--verbose', action='store_true')
