@@ -122,6 +122,11 @@ class PyTux:
             aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, track)
             aim_point_image = self._to_image(aim_point_world, proj, view)
 
+            bananas= []
+            for item in state.items:
+                if item.type == pystk.Item.Type.BANANA:
+                    bananas.append(item.location)
+                
             aim_point_world_post = self._point_on_track(kart.distance_down_track+TRACK_OFFSET+10, track)
             aim_point_image_post = self._to_image(aim_point_world_post, proj, view)
 
@@ -145,6 +150,32 @@ class PyTux:
                 ax.clear()
                 ax.imshow(self.k.render_data[0].image)
                 WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
+                
+                is_banana = False
+                for banana in bananas:
+                    ax.add_artist(plt.Circle(WH2*(1+self._to_image(banana, proj, view)), 2, ec='Yellow', fill=False, lw=1.5))
+                    #print(banana[2])
+                    if np.isclose(banana[0], kart.location[0], atol=5) and np.isclose(banana[1], kart.location[1], atol=5) and np.isclose(banana[2], kart.location[2], atol=5):
+                        print("Banana")
+                        print(banana)
+                        print(kart.location)
+                        print(" ")
+                        is_banana = True
+                        
+                        angle_banana_x = banana[0] - kart.location[0]
+                        angle_banana_y = banana[1] - kart.location[1]
+                        angle_banana_z = banana[2] - kart.location[2]
+
+                        print("Angulos")
+                        print(angle_banana_x)
+                        print(angle_banana_y)
+                        print(angle_banana_z)
+
+                    
+                
+                
+
+
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(kart.location, proj, view)), 2, ec='b', fill=False, lw=1.5))
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 2, ec='Red', fill=False, lw=1.5))
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world_post, proj, view)), 2, ec='DeepSkyBlue', fill=False, lw=1.5))
