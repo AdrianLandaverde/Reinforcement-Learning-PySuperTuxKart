@@ -147,11 +147,11 @@ class PyTux:
                 WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(kart.location, proj, view)), 2, ec='b', fill=False, lw=1.5))
                 ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 2, ec='Red', fill=False, lw=1.5))
-                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world_post, proj, view)), 2, ec='DarkRed', fill=False, lw=1.5))
+                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world_post, proj, view)), 2, ec='DeepSkyBlue', fill=False, lw=1.5))
                 if planner:
                     ap = self._point_on_track(kart.distance_down_track + TRACK_OFFSET, track)
-                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image), 2, ec='lawnGreen', fill=False, lw=1.5))
-                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image_post), 2, ec='DarkGreen', fill=False, lw=1.5))
+                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image), 2, ec='DarkRed', fill=False, lw=1.5))
+                    ax.add_artist(plt.Circle(WH2*(1+aim_point_image_post), 2, ec='DarkBlue', fill=False, lw=1.5))
                 plt.pause(1e-3)
 
             self.k.step(action)
@@ -184,8 +184,8 @@ if __name__ == '__main__':
     parser = ArgumentParser("Collects a dataset for the high-level planner")
     parser.add_argument('track', nargs='+')
     parser.add_argument('-o', '--output', default=DATASET_PATH)
-    parser.add_argument('-n', '--n_images', default=10000, type=int)
-    parser.add_argument('-m', '--steps_per_track', default=20000, type=int)
+    parser.add_argument('-n', '--n_images', default=15000, type=int)
+    parser.add_argument('-m', '--steps_per_track', default=30000, type=int)
     parser.add_argument('--aim_noise', default=0.1, type=float)
     parser.add_argument('--vel_noise', default=5, type=float)
     parser.add_argument('-v', '--verbose', action='store_true')
@@ -220,11 +220,12 @@ if __name__ == '__main__':
                     f.write('%0.1f,%0.1f' % tuple(pt2))
             n += 1
         pbar = tqdm.tqdm(total=images_per_track)
-        while n < args.steps_per_track:
+        while n < images_per_track:
             steps, how_far = pytux.rollout(track, noisy_control, max_frames=1000, verbose=args.verbose, data_callback=collect)
             #print(steps, how_far) #Quitar
             # Add noise after the first round
             aim_noise, vel_noise = args.aim_noise, args.vel_noise
             
+            #print(n, args.steps_per_track, images_per_track) #Agregado
             pbar.update(n)
     pytux.close()

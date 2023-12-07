@@ -31,7 +31,7 @@ def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=2
     if aim_point_post is not None:
 
         # Compute skidding
-        if abs(aim_point_post[0]) > skid_thresh + 0.1:
+        if abs(aim_point_post[0]) - abs(aim_point[0]) > 0.1:
             action.drift = True
             action.steer = np.clip((steer_gain*2) * aim_point_post[0], -1, 1)
         else:
