@@ -89,7 +89,7 @@ class PyTux:
             if self.k is not None:
                 self.k.stop()
                 del self.k
-            config = pystk.RaceConfig(num_kart=5, laps=1,  track=track)
+            config = pystk.RaceConfig(num_kart=1, laps=1,  track=track)
             config.players[0].controller = pystk.PlayerConfig.Controller.PLAYER_CONTROL
 
             self.k = pystk.Race(config)
@@ -147,19 +147,13 @@ class PyTux:
                     bananas.append(item.location)
 
             is_banana = False
-            nearest_banana = None
-            banana_screen = None
-            if self.k.config.track=="cornfield_crossing" or self.k.config.track=="abyss":
+            if self.k.config.track=="cornfield_crossing":
                 tol_banana= 10
                 n_banana= 0
                 for banana in bananas:
-                    if np.isclose(banana[0], kart.location[0], atol=tol_banana)  and np.isclose(banana[2], kart.location[2], atol=tol_banana):
+                    if (np.isclose(banana[0], kart.location[0], atol=tol_banana)  and 
+                        np.isclose(banana[2], kart.location[2], atol=tol_banana)):
                         is_banana = True
-                        nearest_banana = banana
-                        
-                        banana_screen= WH2*(1+self._to_image(nearest_banana, proj, view))
-
-                        print("Banana coordiantes screen:", banana_screen)
                         break
                     n_banana+=1
             current_vel = np.linalg.norm(kart.velocity)
@@ -176,11 +170,11 @@ class PyTux:
                 ax.imshow(self.k.render_data[0].image)
 
                 if is_banana:
-                    ax.add_artist(plt.Circle(WH2*(1+self._to_image(nearest_banana, proj, view)), 10, ec='Yellow', fill=False, lw=1.5))
+                    ax.add_artist(plt.Circle(WH2*(1+self._to_image(banana, proj, view)), 6, ec='Yellow', fill=False, lw=1.5))
                 
-                ax.add_artist(plt.Circle(WH2*(1+self._to_image(kart.location, proj, view)), 2, ec='b', fill=False, lw=1.5))
-                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 2, ec='Red', fill=False, lw=1.5))
-                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world_post, proj, view)), 2, ec='DeepSkyBlue', fill=False, lw=1.5))
+                ax.add_artist(plt.Circle(WH2*(1+self._to_image(kart.location, proj, view)), 6, ec='b', fill=False, lw=1.5))
+                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world, proj, view)), 6, ec='Red', fill=False, lw=1.5))
+                ax.add_artist(plt.Circle(WH2*(1+self._to_image(aim_point_world_post, proj, view)), 6, ec='DeepSkyBlue', fill=False, lw=1.5))
                 if planner:
                     ap = self._point_on_track(kart.distance_down_track + TRACK_OFFSET, track)
                     ax.add_artist(plt.Circle(WH2*(1+aim_point_image), 2, ec='DarkRed', fill=False, lw=1.5))

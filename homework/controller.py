@@ -40,6 +40,7 @@ def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=2
             if abs(aim_point[0]) > 0.15:
                 action.acceleration= 1
 
+    # Compute Banana
     if is_banana:
         if abs(aim_point[0]) < 0.15:
             action.drift=True
