@@ -56,7 +56,7 @@ class PyTux:
         Get a point at `distance` down the `track`. Optionally applies an offset after the track segment if found.
         Returns a 3d coordinate
         """
-        node_idx = np.searchsorted(track.path_distance[..., 1],
+        node_idx = np.searchsorted(track.path_distance[..., -1],
                                    distance % track.path_distance[-1, 1]) % len(track.path_nodes)
         d = track.path_distance[node_idx]
         x = track.path_nodes[node_idx]
@@ -111,7 +111,7 @@ class PyTux:
 
             kart = state.players[0].kart
 
-            if np.isclose(kart.overall_distance / track.length, 1.0, atol=2e-3):
+            if np.isclose(kart.overall_distance / track.length, 1.0, atol=3.5e-3):
                 if verbose:
                     print("Finished at t=%d" % t)
                 break
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     parser = ArgumentParser("Collects a dataset for the high-level planner")
     parser.add_argument('track', nargs='+')
     parser.add_argument('-o', '--output', default=DATASET_PATH)
-    parser.add_argument('-n', '--n_images', default=15000, type=int)
+    parser.add_argument('-n', '--n_images', default=10000, type=int)
     parser.add_argument('-m', '--steps_per_track', default=30000, type=int)
     parser.add_argument('--aim_noise', default=0.1, type=float)
     parser.add_argument('--vel_noise', default=5, type=float)

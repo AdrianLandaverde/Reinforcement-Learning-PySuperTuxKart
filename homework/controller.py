@@ -12,12 +12,7 @@ def control(aim_point, current_vel, steer_gain=6, skid_thresh=0.25, target_vel=2
     else:
         action.acceleration = 1
     
-    if current_vel > target_vel:
-        action.brake = True
-        action.nitro = False
-    else:
-        action.brake = False	
-        action.nitro = True
+    action.nitro= True
     
     # Compute steering
     action.steer = np.clip(steer_gain * aim_point[0], -1, 1)
