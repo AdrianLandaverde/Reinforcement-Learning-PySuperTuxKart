@@ -183,7 +183,7 @@ class PyTux:
 
             self.k.step(action)
             t += 1
-            #break
+            break
 
         import pandas as pd
         import pickle
@@ -192,7 +192,13 @@ class PyTux:
 
         with open("path_nodes/"+self.k.config.track+".pkl", 'wb') as f:
             pickle.dump(track.path_nodes, f)
+
+
+        with open("bananas.pkl", "wb") as f:
+            pickle.dump(bananas, f)
         return t, kart.overall_distance / track.length
+    
+        
 
     def close(self):
         """
