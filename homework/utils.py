@@ -41,13 +41,15 @@ def load_data(dataset_path=DATASET_PATH, transform=dense_transforms.ToTensor(), 
 class PyTux:
     _singleton = None
 
-    def __init__(self, screen_width=128, screen_height=96):
+    def __init__(self, screen_width=128*3, screen_height=96*3):
         assert PyTux._singleton is None, "Cannot create more than one pytux object"
         PyTux._singleton = self
         self.config = pystk.GraphicsConfig.hd()
         self.config.screen_width = screen_width
         self.config.screen_height = screen_height
         pystk.init(self.config)
+        print(pystk.list_tracks())
+        print(pystk.list_karts())
         self.k = None
 
     @staticmethod
@@ -87,7 +89,7 @@ class PyTux:
             if self.k is not None:
                 self.k.stop()
                 del self.k
-            config = pystk.RaceConfig(num_kart=1, laps=1,  track=track)
+            config = pystk.RaceConfig(num_kart=5, laps=1,  track=track)
             config.players[0].controller = pystk.PlayerConfig.Controller.PLAYER_CONTROL
 
             self.k = pystk.Race(config)
@@ -97,12 +99,16 @@ class PyTux:
         state = pystk.WorldState()
         track = pystk.Track()
 
+        play_config= pystk.PlayerConfig
+        play_config.kart= "emule"
+
         last_rescue = 0
 
         if verbose:
             import matplotlib.pyplot as plt
             fig, ax = plt.subplots(1, 1)
 
+        path_nodes= []
         for t in range(max_frames):
         #for t in tqdm.tqdm(range(max_frames)): #Agregado
 
@@ -134,6 +140,7 @@ class PyTux:
                 if planner_post:
                     aim_point_image_post = planner_post(TF.to_tensor(image)[None]).squeeze(0).cpu().detach().numpy()
 
+            WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
             bananas= []
             for item in state.items:
                 if item.type == pystk.Item.Type.BANANA:
@@ -141,18 +148,18 @@ class PyTux:
 
             is_banana = False
             nearest_banana = None
-            if self.k.config.track=="cornfield_crossing":
+            banana_screen = None
+            if self.k.config.track=="cornfield_crossing" or self.k.config.track=="abyss":
                 tol_banana= 10
                 n_banana= 0
                 for banana in bananas:
                     if np.isclose(banana[0], kart.location[0], atol=tol_banana)  and np.isclose(banana[2], kart.location[2], atol=tol_banana):
                         is_banana = True
                         nearest_banana = banana
-                        x_banana= banana[0]
-                        y_banana= banana[2]
+                        
+                        banana_screen= WH2*(1+self._to_image(nearest_banana, proj, view))
 
-                        angle_kart_banana= np.arctan2(abs(x_banana)-abs(kart.location[0]), abs(y_banana)-abs(kart.location[2]), )
-                        print("Angle kart-banana: ", angle_kart_banana*180/np.pi, "n_banana: ", n_banana)
+                        print("Banana coordiantes screen:", banana_screen)
                         break
                     n_banana+=1
             current_vel = np.linalg.norm(kart.velocity)
@@ -167,7 +174,6 @@ class PyTux:
             if verbose:
                 ax.clear()
                 ax.imshow(self.k.render_data[0].image)
-                WH2 = np.array([self.config.screen_width, self.config.screen_height]) / 2
 
                 if is_banana:
                     ax.add_artist(plt.Circle(WH2*(1+self._to_image(nearest_banana, proj, view)), 10, ec='Yellow', fill=False, lw=1.5))
@@ -183,7 +189,15 @@ class PyTux:
 
             self.k.step(action)
             t += 1
+            #break
 
+        import pandas as pd
+        import pickle
+        with open("path_distance/"+self.k.config.track+".pkl", 'wb') as f:
+            pickle.dump(track.path_distance, f)
+
+        with open("path_nodes/"+self.k.config.track+".pkl", 'wb') as f:
+            pickle.dump(track.path_nodes, f)
         return t, kart.overall_distance / track.length
 
     def close(self):
